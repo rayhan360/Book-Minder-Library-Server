@@ -1,16 +1,20 @@
 const express = require("express");
 const app = express();
-const cors = require('cors');
-require('dotenv').config()
+const cors = require("cors");
+require("dotenv").config();
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const port = process.env.PORT || 3000;
 
 // middleware
-app.use(cors())
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
 app.use(express.json());
 
-const uri =
-  `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.z6box3t.mongodb.net/?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.z6box3t.mongodb.net/?retryWrites=true&w=majority`;
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
@@ -23,15 +27,29 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    const categoryCollection = client.db('bookMinderDB').collection('category')
+    const categoryCollection = client.db("bookMinderDB").collection("category");
+    const booksCollection = client.db("bookMinderDB").collection("books");
 
     // category get operation
-    app.get('/api/v1/category', async (req, res) => {
-      const cursor = categoryCollection.find()
-      const result = await cursor.toArray()
-      res.send(result)
-    })
+    app.get("/api/v1/category", async (req, res) => {
+      const cursor = categoryCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
+    // books get operation
+    app.get("/api/v1/books", async (req, res) => {
+      const cursor = booksCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // books post operation
+    app.post("/api/v1/books", async (req, res) => {
+      const newBooks = req.body;
+      const result = await booksCollection.insertOne(newBooks);
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
@@ -52,6 +70,3 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
-
-// bookMinder
-// FuJlbm6nSIZ0KTN3
