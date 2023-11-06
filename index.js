@@ -2,7 +2,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 require("dotenv").config();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
 
 // middleware
@@ -44,6 +44,14 @@ async function run() {
       res.send(result);
     });
 
+    // books get operation by id based
+    app.get("/api/v1/books/:id", async(req, res) => {
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const result = await booksCollection.findOne(query)
+      res.send(result)
+    })
+
     // books post operation
     app.post("/api/v1/books", async (req, res) => {
       const newBooks = req.body;
@@ -64,7 +72,7 @@ async function run() {
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-  res.send("Hello World!");
+  res.send("book minder server is running");
 });
 
 app.listen(port, () => {
