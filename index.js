@@ -45,17 +45,38 @@ async function run() {
     });
 
     // books get operation by id based
-    app.get("/api/v1/books/:id", async(req, res) => {
+    app.get("/api/v1/books/:id", async (req, res) => {
       const id = req.params.id;
-      const query = {_id: new ObjectId(id)}
-      const result = await booksCollection.findOne(query)
-      res.send(result)
-    })
+      const query = { _id: new ObjectId(id) };
+      const result = await booksCollection.findOne(query);
+      res.send(result);
+    });
 
     // books post operation
     app.post("/api/v1/books", async (req, res) => {
       const newBooks = req.body;
       const result = await booksCollection.insertOne(newBooks);
+      res.send(result);
+    });
+
+    // updated books
+    app.put("/api/v1/books/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updatedBooks = req.body;
+      const books = {
+        $set: {
+          image: updatedBooks.image,
+          name: updatedBooks.name,
+          quantity: updatedBooks.quantity,
+          author: updatedBooks.author,
+          category: updatedBooks.category,
+          rating: updatedBooks.rating,
+          description: updatedBooks.description,
+        },
+      };
+      const result = await booksCollection.updateOne(filter, books, options);
       res.send(result);
     });
 
