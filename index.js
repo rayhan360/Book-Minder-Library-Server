@@ -29,7 +29,10 @@ async function run() {
     await client.connect();
     const categoryCollection = client.db("bookMinderDB").collection("category");
     const booksCollection = client.db("bookMinderDB").collection("books");
+    const borrowCollection = client.db("bookMinderDB").collection("borrow");
 
+
+    
     // category get operation
     app.get("/api/v1/category", async (req, res) => {
       const cursor = categoryCollection.find();
@@ -40,6 +43,13 @@ async function run() {
     // books get operation
     app.get("/api/v1/books", async (req, res) => {
       const cursor = booksCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // borrow book get operation
+    app.get("/api/v1/borrow", async (req, res) => {
+      const cursor = borrowCollection.find();
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -57,6 +67,32 @@ async function run() {
       const newBooks = req.body;
       const result = await booksCollection.insertOne(newBooks);
       res.send(result);
+    });
+
+    // borrow book post operation
+    app.post("/api/v1/borrow", async (req, res) => {
+      const newBorrowCard = req.body;
+      const bookId = newBorrowCard.bookName;
+      const bookQuery = { name: bookId };
+      const borrowedBook = await booksCollection.findOne(bookQuery);
+
+      if (borrowedBook.quantity > 0) {
+        const borrowResult = await borrowCollection.insertOne(newBorrowCard);
+        const updatedBookQuantity = borrowedBook.quantity - 1;
+
+        if (updatedBookQuantity >= 0) {
+          const bookUpdateResult = await booksCollection.updateOne(bookQuery, {
+            $set: { quantity: updatedBookQuantity },
+          });
+          res.send({ borrowResult, bookUpdateResult });
+        } else {
+          res
+            .status(400)
+            .send({ message: "Not enough books in stock to borrow" });
+        }
+      } else {
+        res.status(400).send({ message: "No books available to borrow" });
+      }
     });
 
     // updated books
