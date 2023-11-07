@@ -23,6 +23,7 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -48,8 +49,6 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
-
-
 
     // books get operation by id based
     app.get("/api/v1/books/:id", async (req, res) => {
@@ -144,8 +143,33 @@ async function run() {
     app.delete("/api/v1/borrow-book/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
-      const result = await borrowCollection.deleteOne(query);
-      res.send(result);
+
+      try {
+        // Find the borrowed book first to get its details
+        const borrowedBook = await borrowCollection.findOne(query);
+
+        if (!borrowedBook) {
+          res.status(404).send({ message: "Borrowed book not found" });
+          return;
+        }
+
+        // Delete the borrowed book document
+        const deleteResult = await borrowCollection.deleteOne(query);
+
+        // Increase the quantity of the book in booksCollection
+        const bookQuery = { name: borrowedBook.bookName };
+        const intQuantity = parseInt(borrowedBook.quantity)
+        const updatedBookQuantity = (intQuantity + 1) - 1;
+
+        // Update the book quantity in booksCollection
+        const bookUpdateResult = await booksCollection.updateOne(bookQuery, {
+          $set: { quantity: updatedBookQuantity },
+        });
+
+        res.send({ deleteResult, bookUpdateResult });
+      } catch (error) {
+        res.status(500).send({ message: "Internal server error" });
+      }
     });
 
     // Send a ping to confirm a successful connection
