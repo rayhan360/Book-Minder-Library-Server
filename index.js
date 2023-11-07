@@ -49,18 +49,21 @@ async function run() {
       res.send(result);
     });
 
-    // borrow book get operation
-    app.get("/api/v1/borrow", async (req, res) => {
-      const cursor = borrowCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-    });
+
 
     // books get operation by id based
     app.get("/api/v1/books/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await booksCollection.findOne(query);
+      res.send(result);
+    });
+
+    // borrow get operation by id based
+    app.get("/api/v1/borrow-book/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await borrowCollection.findOne(query);
       res.send(result);
     });
 
@@ -83,7 +86,7 @@ async function run() {
     });
 
     // borrow book post operation
-    app.post("/api/v1/borrow", async (req, res) => {
+    app.post("/api/v1/borrow-book", async (req, res) => {
       const newBorrowCard = req.body;
       const bookname = newBorrowCard.bookName;
       const bookQuery = { name: bookname };
@@ -134,6 +137,14 @@ async function run() {
         },
       };
       const result = await booksCollection.updateOne(filter, books, options);
+      res.send(result);
+    });
+
+    // delete a borrow book data
+    app.delete("/api/v1/borrow-book/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await borrowCollection.deleteOne(query);
       res.send(result);
     });
 
