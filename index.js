@@ -30,9 +30,11 @@ async function run() {
     const categoryCollection = client.db("bookMinderDB").collection("category");
     const booksCollection = client.db("bookMinderDB").collection("books");
     const borrowCollection = client.db("bookMinderDB").collection("borrow");
+    await borrowCollection.createIndex(
+      { email: 1, bookName: 1 },
+      { unique: true }
+    );
 
-
-    
     // category get operation
     app.get("/api/v1/category", async (req, res) => {
       const cursor = categoryCollection.find();
@@ -72,12 +74,15 @@ async function run() {
     // borrow book post operation
     app.post("/api/v1/borrow", async (req, res) => {
       const newBorrowCard = req.body;
-      const bookId = newBorrowCard.bookName;
-      const bookQuery = { name: bookId };
+      const bookname = newBorrowCard.bookName;
+      const bookQuery = { name: bookname };
       const borrowedBook = await booksCollection.findOne(bookQuery);
 
-      if (borrowedBook.quantity > 0) {
+      try {
+        // Attempt to insert the document into the borrowCollection
         const borrowResult = await borrowCollection.insertOne(newBorrowCard);
+
+        // If successful, update the book quantity
         const updatedBookQuantity = borrowedBook.quantity - 1;
 
         if (updatedBookQuantity >= 0) {
@@ -85,13 +90,20 @@ async function run() {
             $set: { quantity: updatedBookQuantity },
           });
           res.send({ borrowResult, bookUpdateResult });
-        } else {
+        }
+      } catch (error) {
+        // Handle duplicate key error
+        if (error.code === 11000) {
           res
             .status(400)
-            .send({ message: "Not enough books in stock to borrow" });
+            .send({
+              message:
+                "Duplicate entry. This book is already borrowed by the user.",
+            });
+        } else {
+          // Handle other errors
+          res.status(500).send({ message: "Internal server error" });
         }
-      } else {
-        res.status(400).send({ message: "No books available to borrow" });
       }
     });
 
