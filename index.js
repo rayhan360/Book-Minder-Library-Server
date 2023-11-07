@@ -64,6 +64,17 @@ async function run() {
       res.send(result);
     });
 
+    // borrowed book get operating by email
+    app.get("/api/v1/borrow-book", async (req, res) => {
+      let query = {};
+      if (req.query?.email) {
+        query = { email: req.query?.email };
+      }
+
+      const result = await borrowCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // books post operation
     app.post("/api/v1/books", async (req, res) => {
       const newBooks = req.body;
@@ -94,12 +105,10 @@ async function run() {
       } catch (error) {
         // Handle duplicate key error
         if (error.code === 11000) {
-          res
-            .status(400)
-            .send({
-              message:
-                "Duplicate entry. This book is already borrowed by the user.",
-            });
+          res.status(400).send({
+            message:
+              "Duplicate entry. This book is already borrowed by the user.",
+          });
         } else {
           // Handle other errors
           res.status(500).send({ message: "Internal server error" });
