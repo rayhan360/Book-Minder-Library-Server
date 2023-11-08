@@ -1,6 +1,8 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
@@ -13,6 +15,7 @@ app.use(
   })
 );
 app.use(express.json());
+app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.z6box3t.mongodb.net/?retryWrites=true&w=majority`;
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -23,6 +26,23 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+// own middleware
+const verifyToken = (req, res, next) => {
+  const token = req?.cookies?.token;
+
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "unauthorized access" });
+    }
+    req.user = decoded;
+    next();
+  });
+};
 
 async function run() {
   try {
@@ -36,6 +56,26 @@ async function run() {
       { unique: true }
     );
 
+    // auth realted api
+    app.post("/api/v1/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: false,
+        })
+        .send({ success: true });
+    });
+
+    app.post("/api/v1/logout", async (req, res) => {
+      const user = req.body;
+      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+    });
+
     // category get operation
     app.get("/api/v1/category", async (req, res) => {
       const cursor = categoryCollection.find();
@@ -44,7 +84,7 @@ async function run() {
     });
 
     // books get operation
-    app.get("/api/v1/books", async (req, res) => {
+    app.get("/api/v1/books", verifyToken, async (req, res) => {
       const cursor = booksCollection.find();
       const result = await cursor.toArray();
       res.send(result);
@@ -67,7 +107,11 @@ async function run() {
     });
 
     // borrowed book get operating by email
-    app.get("/api/v1/borrow-book", async (req, res) => {
+    app.get("/api/v1/borrow-book", verifyToken, async (req, res) => {
+      if (req.query.email !== req.user.email) {
+        return res.status(403).send({ message: "forbidden access" });
+      }
+
       let query = {};
       if (req.query?.email) {
         query = { email: req.query?.email };
@@ -78,8 +122,16 @@ async function run() {
     });
 
     // books post operation
-    app.post("/api/v1/books", async (req, res) => {
+    app.post("/api/v1/books", verifyToken, async (req, res) => {
       const newBooks = req.body;
+      const bookname = newBooks.name;
+      const existingBook = await booksCollection.findOne({ name: bookname });
+      if (existingBook) {
+        return res
+          .status(400)
+          .send({ message: "A book with the same name already exists" });
+      }
+      
       const result = await booksCollection.insertOne(newBooks);
       res.send(result);
     });
@@ -158,8 +210,8 @@ async function run() {
 
         // Increase the quantity of the book in booksCollection
         const bookQuery = { name: borrowedBook.bookName };
-        const intQuantity = parseInt(borrowedBook.quantity)
-        const updatedBookQuantity = (intQuantity + 1) - 1;
+        const intQuantity = parseInt(borrowedBook.quantity);
+        const updatedBookQuantity = intQuantity + 1 - 1;
 
         // Update the book quantity in booksCollection
         const bookUpdateResult = await booksCollection.updateOne(bookQuery, {
