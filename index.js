@@ -10,7 +10,11 @@ const port = process.env.PORT || 3000;
 // middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [
+      // "http://localhost:5173",
+      "https://book-minder-library.web.app",
+      "https://book-minder-library.firebaseapp.com"
+    ],
     credentials: true,
   })
 );
@@ -66,14 +70,15 @@ async function run() {
       res
         .cookie("token", token, {
           httpOnly: true,
-          secure: false,
+          secure: true,
+          sameSite: 'none',
         })
         .send({ success: true });
     });
 
     app.post("/api/v1/logout", async (req, res) => {
       const user = req.body;
-      res.clearCookie("token", { maxAge: 0 }).send({ success: true });
+      res.clearCookie("token", { maxAge: 0, secure: true, sameSite: 'none' }).send({ success: true });
     });
 
     // category get operation
@@ -122,7 +127,7 @@ async function run() {
     });
 
     // books post operation
-    app.post("/api/v1/books", verifyToken, async (req, res) => {
+    app.post("/api/v1/books", async (req, res) => {
       const newBooks = req.body;
       const bookname = newBooks.name;
       const existingBook = await booksCollection.findOne({ name: bookname });
@@ -131,7 +136,7 @@ async function run() {
           .status(400)
           .send({ message: "A book with the same name already exists" });
       }
-      
+
       const result = await booksCollection.insertOne(newBooks);
       res.send(result);
     });
