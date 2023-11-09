@@ -11,7 +11,6 @@ const port = process.env.PORT || 3000;
 app.use(
   cors({
     origin: [
-      // "http://localhost:5173",
       "https://book-minder-library.web.app",
       "https://book-minder-library.firebaseapp.com"
     ],
@@ -51,7 +50,8 @@ const verifyToken = (req, res, next) => {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
+
     const categoryCollection = client.db("bookMinderDB").collection("category");
     const booksCollection = client.db("bookMinderDB").collection("books");
     const borrowCollection = client.db("bookMinderDB").collection("borrow");
