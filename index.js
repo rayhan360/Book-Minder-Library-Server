@@ -1,24 +1,13 @@
 const express = require("express");
 const app = express();
 const cors = require("cors");
-const jwt = require("jsonwebtoken");
-const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
 
 // middleware
-app.use(
-  cors({
-    origin: [
-      "https://book-minder-library.web.app",
-      "https://book-minder-library.firebaseapp.com"
-    ],
-    credentials: true,
-  })
-);
+app.use(cors());
 app.use(express.json());
-app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.z6box3t.mongodb.net/?retryWrites=true&w=majority`;
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -30,22 +19,6 @@ const client = new MongoClient(uri, {
   },
 });
 
-// own middleware
-const verifyToken = (req, res, next) => {
-  const token = req?.cookies?.token;
-
-  if (!token) {
-    return res.status(401).send({ message: "unauthorized access" });
-  }
-
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-    if (err) {
-      return res.status(401).send({ message: "unauthorized access" });
-    }
-    req.user = decoded;
-    next();
-  });
-};
 
 async function run() {
   try {
@@ -89,7 +62,7 @@ async function run() {
     });
 
     // books get operation
-    app.get("/api/v1/books", verifyToken, async (req, res) => {
+    app.get("/api/v1/books", async (req, res) => {
       const cursor = booksCollection.find();
       const result = await cursor.toArray();
       res.send(result);
@@ -112,7 +85,7 @@ async function run() {
     });
 
     // borrowed book get operating by email
-    app.get("/api/v1/borrow-book", verifyToken, async (req, res) => {
+    app.get("/api/v1/borrow-book", async (req, res) => {
       if (req.query.email !== req.user.email) {
         return res.status(403).send({ message: "forbidden access" });
       }
@@ -230,7 +203,7 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
